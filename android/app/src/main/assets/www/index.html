@@ -217,6 +217,7 @@ input[type=range]{accent-color:#ffb020;width:150px}
     <div class="tt" id="ovt">👮 BUSTED!</div><div class="sub0">The police caught you! Revive to escape</div><div id="newrec" class="hide">🏆 NEW BEST SCORE!</div>
     <div id="res">0</div><div class="lbl">SCORE</div><div id="resd"></div>
     <button id="revive" class="btn red">🗝️ REVIVE</button>
+    <button id="adrevive" class="btn sec hide">📺 WATCH AD • FREE REVIVE</button>
     <div class="row2"><button id="again" class="btn">▶ PLAY AGAIN</button><button id="home" class="btn ghost">☰ MENU</button></div>
   </div>
 </div>
@@ -1161,9 +1162,9 @@ function finishRun(){const sc=Math.floor(score),nb=sc>SAVE.best,prevBest=SAVE.be
   checkAch();save();renderBank();
   $('res').textContent=sc.toLocaleString();$('newrec').classList.toggle('hide',!(nb&&sc>0));
   $('resd').innerHTML=`<div><b>${best.toLocaleString()}</b>BEST</div><div><b>+${coins}</b>COINS</div><div><b>${Math.floor(dist)}m</b>DISTANCE</div>`;
-  const rv=$('revive');rv.classList.toggle('hide',revives>=2);rv.classList.toggle('off',SAVE.keys<reviveCost());rv.textContent='🗝️ REVIVE  • '+reviveCost()+' keys (you have '+SAVE.keys+')';
+  const rv=$('revive');rv.classList.toggle('hide',revives>=2);rv.classList.toggle('off',SAVE.keys<reviveCost());rv.textContent='🗝️ REVIVE  • '+reviveCost()+' keys (you have '+SAVE.keys+')';{const ab=$('adrevive');if(ab)ab.classList.toggle('hide',!(window.AndroidAds&&revives<2));}
   if(nb&&sc>=100)showHS(sc,prevBest);else $('over').classList.remove('hide');}
-function revive(){if(SAVE.keys<reviveCost()){toast('🗝️ '+reviveCost()+' keys needed (you have '+SAVE.keys+'). Find them during a run or in 🎁 gift boxes');return;}SAVE.keys-=reviveCost();revives++;stumbleT=0;warnT=0;laneChT=0;state='play';invuln=3;dieT=0;fallT=0;copZ=22;copCaught=false;copShow=0;if(cop)cop.g.visible=false;sirenOp(0);
+function revive(free){if(!free&&SAVE.keys<reviveCost()){toast('🗝️ '+reviveCost()+' keys needed (you have '+SAVE.keys+'). Find them during a run or in 🎁 gift boxes');return;}if(!free)SAVE.keys-=reviveCost();revives++;stumbleT=0;warnT=0;laneChT=0;state='play';invuln=3;dieT=0;fallT=0;copZ=22;copCaught=false;copShow=0;if(cop)cop.g.visible=false;sirenOp(0);
   human.g.rotation.set(0,0,0);obs=obs.filter(o=>{if(o.z+o.L/2+(o.R||0)>-70){scene.remove(o.m);freeObj(o.m);return false;}return true;});sfx('power');save();renderBank();$('over').classList.add('hide');}
 // ----- panels -----
 function openPanel(w){panelW=w;resetArm=0;const p=$('panel');p.classList.remove('hide');p.classList.toggle('full',w!=='shop');shopView=w==='shop'&&state==='menu';
@@ -1268,7 +1269,10 @@ $('pausebtn').onclick=togglePause;$('presume').onclick=resumeGame;
 $('prestart').onclick=()=>{leavePause();start();};$('phome').onclick=()=>{leavePause();toMenu();};
 $('pmus').onclick=()=>{initAudio();musicOn=!musicOn;if(musicG)musicG.gain.value=musicOn?musicVol:0;$('pmus').textContent='🎵 Music: '+(musicOn?'ON':'OFF');};
 $('psfx').onclick=()=>{initAudio();sfxOn=!sfxOn;if(sfxG)sfxG.gain.value=sfxOn?sfxVol:0;$('psfx').textContent='🔊 SFX: '+(sfxOn?'ON':'OFF');};
-$('revive').onclick=revive;
+$('revive').onclick=()=>revive(false);
+$('adrevive').onclick=()=>{try{window.AndroidAds.showRewarded();}catch(e){}};
+window.onAdReward=()=>{revive(true);};
+window.onAdFailed=()=>{toast('📺 Ad not available right now. Try again in a moment');};
 addEventListener('keydown',e=>{if(e.key==='h'||e.key==='H')hbClick();});
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&state==='play'&&!paused)togglePause();});
 function initUI(){applySettings();applySkin();buildHuman(SAVE.sel,SAVE.outfit);sel=SAVE.sel;updSel();renderBank();renderChips();renderNav();checkAch();

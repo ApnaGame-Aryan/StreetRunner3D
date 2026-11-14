@@ -1,17 +1,97 @@
 package com.streetrunner3d.game;
 
 import android.app.Activity;
+import android.content.pm.ApplicationInfo;
 import android.os.Bundle;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
+import android.webkit.JavascriptInterface;
 import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 
+import com.google.android.gms.ads.AdError;
+import com.google.android.gms.ads.AdRequest;
+import com.google.android.gms.ads.FullScreenContentCallback;
+import com.google.android.gms.ads.LoadAdError;
+import com.google.android.gms.ads.MobileAds;
+import com.google.android.gms.ads.rewarded.RewardedAd;
+import com.google.android.gms.ads.rewarded.RewardedAdLoadCallback;
+
 public class MainActivity extends Activity {
+    // Debug builds always use Google's TEST ad unit. Release builds use the live one.
+    private static final String TEST_REWARDED_ID = "ca-app-pub-3940256099942544/5224354917";
+    private static final String LIVE_REWARDED_ID = "ca-app-pub-3289477301560269/2622754240";
+
     private WebView gameView;
+    private RewardedAd rewardedAd;
+    private boolean loadingAd = false;
+    private boolean rewardEarned = false;
+
+    private String rewardedUnitId() {
+        boolean debug = (getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE) != 0;
+        return debug ? TEST_REWARDED_ID : LIVE_REWARDED_ID;
+    }
+
+    private void callJs(final String js) {
+        runOnUiThread(new Runnable() {
+            @Override public void run() {
+                if (gameView != null) gameView.evaluateJavascript(js, null);
+            }
+        });
+    }
+
+    private void loadRewarded() {
+        if (loadingAd || rewardedAd != null) return;
+        loadingAd = true;
+        RewardedAd.load(this, rewardedUnitId(), new AdRequest.Builder().build(),
+            new RewardedAdLoadCallback() {
+                @Override public void onAdLoaded(RewardedAd ad) {
+                    rewardedAd = ad;
+                    loadingAd = false;
+                }
+                @Override public void onAdFailedToLoad(LoadAdError error) {
+                    rewardedAd = null;
+                    loadingAd = false;
+                }
+            });
+    }
+
+    private void showRewarded() {
+        if (rewardedAd == null) {
+            loadRewarded();
+            callJs("window.onAdFailed&&window.onAdFailed('notready')");
+            return;
+        }
+        final RewardedAd ad = rewardedAd;
+        rewardedAd = null;
+        rewardEarned = false;
+        ad.setFullScreenContentCallback(new FullScreenContentCallback() {
+            @Override public void onAdDismissedFullScreenContent() {
+                loadRewarded();
+                if (rewardEarned) callJs("window.onAdReward&&window.onAdReward()");
+                else callJs("window.onAdFailed&&window.onAdFailed('closed')");
+                rewardEarned = false;
+            }
+            @Override public void onAdFailedToShowFullScreenContent(AdError error) {
+                loadRewarded();
+                callJs("window.onAdFailed&&window.onAdFailed('error')");
+            }
+        });
+        ad.show(this, rewardItem -> { rewardEarned = true; });
+    }
+
+    // Exposed to the game as window.AndroidAds
+    private class AdBridge {
+        @JavascriptInterface
+        public void showRewarded() {
+            runOnUiThread(new Runnable() {
+                @Override public void run() { MainActivity.this.showRewarded(); }
+            });
+        }
+    }
 
     private void applyImmersiveMode() {
         if (gameView == null) return;
@@ -48,11 +128,13 @@ public class MainActivity extends Activity {
         settings.setDisplayZoomControls(false);
         gameView.setWebChromeClient(new WebChromeClient());
         gameView.setWebViewClient(new WebViewClient());
+        gameView.addJavascriptInterface(new AdBridge(), "AndroidAds");
         setContentView(gameView);
         applyImmersiveMode();
 
-        // The recovered game currently loads Three.js r128 from a HTTPS CDN.
-        // Internet access is required when the 3D engine is loaded.
+        MobileAds.initialize(this, initializationStatus -> loadRewarded());
+
+        // The game currently loads Three.js r128 from a HTTPS CDN.
         gameView.loadUrl("file:///android_asset/www/index.html");
     }
 

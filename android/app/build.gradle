@@ -17,6 +17,18 @@ android {
         targetCompatibility JavaVersion.VERSION_17
     }
 
+    signingConfigs {
+        release {
+            def ksPath = System.getenv('KEYSTORE_PATH')
+            if (ksPath) {
+                storeFile file(ksPath)
+                storePassword System.getenv('KEYSTORE_PASSWORD')
+                keyAlias System.getenv('KEY_ALIAS')
+                keyPassword System.getenv('KEY_PASSWORD')
+            }
+        }
+    }
+
     buildTypes {
         debug {
             applicationIdSuffix '.debug'
@@ -24,6 +36,7 @@ android {
         }
         release {
             minifyEnabled false
+            signingConfig signingConfigs.release
             // Configure the private release keystore in Android Studio before publishing.
         }
     }

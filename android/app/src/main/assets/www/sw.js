@@ -1,6 +1,6 @@
 // Street Runner 3D - service worker (offline support)
 // When you update the game, change the CACHE name (v1 -> v2) so the old cache is cleared.
-const CACHE = 'sr3d-v3';
+const CACHE = 'sr3d-v4';
 const THREE = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
 const SHELL = ['./', './index.html', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png', './icons/icon-maskable-512.png', './icons/apple-touch-icon.png'];
 
